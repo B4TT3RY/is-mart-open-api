@@ -1,7 +1,6 @@
 use std::collections::LinkedList;
 
 use crate::{request::request_emart, response_type::SearchResponse};
-use html_parser::Dom;
 use request::{request_costco, request_homeplus};
 use response_type::ErrorResponse;
 use serde_json::Value;
@@ -64,10 +63,6 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                         }
                         "homeplus" => {
                             let response_body = request_homeplus(keyword).await?;
-
-                            let document = Dom::parse(&response_body).unwrap();
-
-                            document.tree_type;
 
                             let mut result: LinkedList<String> = LinkedList::new();
                             
