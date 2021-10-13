@@ -18,11 +18,30 @@
 - Success Response
 
   ```json
-    {
-        "status": "OK",
-        "name": "이마트 가든5점",
-        "start_time": "10:00",
-        "end_time": "22:00",
-        "next_holiday": "20211024"
-    }
+  {
+    "status": "OK"
+  }
+  ```
+
+### 마트 조회
+
+- URL
+
+  `GET /info/:mart/:name`
+
+- URL Params
+  
+  - `mart`: 마트 종류 (`emart`, `homeplus`, `costco`)
+  - `name`: 점포 이름
+
+- Success Response
+
+  ```json
+  {
+    "status": "OK",
+    "name": "이마트 가든5점",
+    "start_time": "10:00",
+    "end_time": "22:00",
+    "next_holiday": "20211024"
+  }
   ```
