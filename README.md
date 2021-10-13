@@ -19,7 +19,11 @@
 
   ```json
   {
-    "status": "OK"
+    "status": "OK",
+    "result": [
+      "가든5점",
+      "가양점"
+    ]
   }
   ```
 
