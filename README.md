@@ -57,7 +57,7 @@
   ```json
   {
     "name": "이마트 경산점",
-    "is_open": false,
+    "state": "HOLIDAY_CLOSED",
     "start_time": "10:00",
     "end_time": "23:00",
     "holidays": [
@@ -66,6 +66,10 @@
     ]
   }
   ```
+
+  - State Type
+  
+    `OPEN`, `BEFORE_OPEN`, `AFTER_CLOSED`, `HOLIDAY_CLOSED`
 
 - Error Response
 
