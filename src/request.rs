@@ -6,7 +6,7 @@ const EMART_BASE_URL: &str = "https://store.emart.com/branch/searchList.do";
 const HOMEPLUS_BASE_URL: &str = "https://corporate.homeplus.co.kr/STORE/HyperMarket.aspx";
 const COSTCO_BASE_URL: &str = "https://www.costco.co.kr/store-finder/search?q=";
 
-const HOMEPLUS_VIEWSTATE: &str = "/wEPDwUJLTc2MDkzMDI3D2QWAmYPZBYCAgUPZBYCAgEPZBYCAgEPEGRkFgFmZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WAwUkY3RsMDAkQ29udGVudFBsYWNlSG9sZGVyMSRzdG9yZXR5cGUxBSRjdGwwMCRDb250ZW50UGxhY2VIb2xkZXIxJHN0b3JldHlwZTIFJGN0bDAwJENvbnRlbnRQbGFjZUhvbGRlcjEkc3RvcmV0eXBlM+aYO9PJofU5uQQJJZRZ2bboir3I";
+const HOMEPLUS_VIEWSTATE: &str = r#"/wEPDwUJLTc2MDkzMDI3D2QWAmYPZBYCAgUPZBYCAgEPZBYCAgEPEGRkFgFmZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WAwUkY3RsMDAkQ29udGVudFBsYWNlSG9sZGVyMSRzdG9yZXR5cGUxBSRjdGwwMCRDb250ZW50UGxhY2VIb2xkZXIxJHN0b3JldHlwZTIFJGN0bDAwJENvbnRlbnRQbGFjZUhvbGRlcjEkc3RvcmV0eXBlM+aYO9PJofU5uQQJJZRZ2bboir3I"#;
 
 pub async fn request_emart(year: i32, month: i32, keyword: &str) -> Result<String, Error> {
     let mut headers = Headers::new();

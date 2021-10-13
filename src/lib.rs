@@ -1,6 +1,7 @@
 use std::collections::LinkedList;
 
 use crate::{request::request_emart, response_type::SearchResponse};
+use regex::Regex;
 use request::{request_costco, request_homeplus};
 use response_type::ErrorResponse;
 use serde_json::Value;
@@ -64,7 +65,15 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                         "homeplus" => {
                             let response_body = request_homeplus(keyword).await?;
 
+                            console_log!("{}", response_body);
+
+                            let regex = Regex::new(r"<a href='(.*)'>([가-힣]+점)</a>").unwrap();
+
                             let mut result: LinkedList<String> = LinkedList::new();
+
+                            for cap in regex.captures_iter(&response_body) {
+                                result.push_back(format!("{:?}", cap));
+                            }                            
                             
                             // for element in document.select(&Selector::parse("li.clearfix span.name a").unwrap()) {
                             //     result.push_back(element.text().collect::<String>());
