@@ -1,6 +1,15 @@
-use serde_json::json;
+use std::collections::LinkedList;
+
+use crate::{request::request_emart, response_type::SearchResponse};
+use html_parser::Dom;
+use request::{request_costco, request_homeplus};
+use response_type::ErrorResponse;
+use serde_json::Value;
+use urlencoding::decode;
 use worker::*;
 
+mod request;
+mod response_type;
 mod utils;
 
 fn log_request(req: &Request) {
@@ -29,26 +38,155 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
     // functionality and a `RouteContext` which you can use to  and get route parameters and
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
-        .get("/", |_, _| Response::ok("Hello from Workers!"))
-        .post_async("/form/:field", |mut req, ctx| async move {
-            if let Some(name) = ctx.param("field") {
-                let form = req.form_data().await?;
-                match form.get(name) {
-                    Some(FormEntry::Field(value)) => {
-                        return Response::from_json(&json!({ name: value }))
+        .get_async("/search/:mart/:keyword", |_, ctx| async move {
+            if let Some(mart) = ctx.param("mart") {
+                if let Some(keyword) = ctx.param("keyword") {
+                    match mart.as_str() {
+                        "emart" => {
+                            let response_body = request_emart(2021, 10, keyword).await?;
+
+                            let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
+                            let mut result: LinkedList<String> = LinkedList::new();
+
+                            for data in json["dataList"].as_array().unwrap() {
+                                result.push_back(data["NAME"].as_str().unwrap().to_string());
+                            }
+
+                            if result.is_empty() {
+                                return Response::from_json(&ErrorResponse {
+                                    error: "검색 결과가 없습니다.".to_string(),
+                                });
+                            }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
+                        }
+                        "homeplus" => {
+                            let response_body = request_homeplus(keyword).await?;
+
+                            let document = Dom::parse(&response_body).unwrap();
+
+                            document.tree_type;
+
+                            let mut result: LinkedList<String> = LinkedList::new();
+                            
+                            // for element in document.select(&Selector::parse("li.clearfix span.name a").unwrap()) {
+                            //     result.push_back(element.text().collect::<String>());
+                            // }
+                            
+                            if result.is_empty() {
+                                return Response::from_json(&ErrorResponse {
+                                    error: "검색 결과가 없습니다.".to_string(),
+                                });
+                            }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
+                        }
+                        "costco" => {
+                            let response_body = request_costco(keyword).await?;
+
+                            let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
+                            let mut result: LinkedList<String> = LinkedList::new();
+
+                            for data in json["data"].as_array().unwrap() {
+                                let display_name = data["displayName"].as_str().unwrap().to_string();
+                                if !display_name.contains(&decode(keyword).unwrap().into_owned()) {
+                                    continue;
+                                }
+                                result.push_back(data["displayName"].as_str().unwrap().to_string());
+                            }
+
+                            if result.is_empty() {
+                                return Response::from_json(&ErrorResponse {
+                                    error: "검색 결과가 없습니다.".to_string(),
+                                });
+                            }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
+                        }
+                        _ => {
+                            return Response::from_json(&ErrorResponse { error: "지원하지 않는 마트 종류입니다.".to_string() });
+                        }
                     }
-                    Some(FormEntry::File(_)) => {
-                        return Response::error("`field` param in form shouldn't be a File", 422);
-                    }
-                    None => return Response::error("Bad Request", 400),
                 }
             }
-
             Response::error("Bad Request", 400)
         })
-        .get("/worker-version", |_, ctx| {
-            let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
-            Response::ok(version)
+        .get_async("/info/:mart/:keyword", |_, ctx| async move {
+            if let Some(mart) = ctx.param("mart") {
+                if let Some(keyword) = ctx.param("keyword") {
+                    match mart.as_str() {
+                        "emart" => {
+                            let response_body = request_emart(2021, 10, keyword).await?;
+
+                            let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
+                            let mut result: LinkedList<String> = LinkedList::new();
+
+                            for data in json["dataList"].as_array().unwrap() {
+                                result.push_back(data["NAME"].as_str().unwrap().to_string());
+                            }
+
+                            if result.is_empty() {
+                                return Response::from_json(&ErrorResponse {
+                                    error: "검색 결과가 없습니다.".to_string(),
+                                });
+                            }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
+                        }
+                        "homeplus" => {
+                            // let response_body = request_homeplus(keyword).await?;
+
+                            let result: LinkedList<String> = LinkedList::new();
+                            
+                            if result.is_empty() {
+                                return Response::from_json(&ErrorResponse {
+                                    error: "검색 결과가 없습니다.".to_string(),
+                                });
+                            }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
+                        }
+                        "costco" => {
+                            let response_body = request_costco(keyword).await?;
+
+                            let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
+                            let mut result: LinkedList<String> = LinkedList::new();
+
+                            for data in json["data"].as_array().unwrap() {
+                                let display_name = data["displayName"].as_str().unwrap().to_string();
+                                if !display_name.contains(&decode(keyword).unwrap().into_owned()) {
+                                    continue;
+                                }
+                                result.push_back(data["displayName"].as_str().unwrap().to_string());
+                            }
+
+                            if result.is_empty() {
+                                return Response::from_json(&ErrorResponse {
+                                    error: "검색 결과가 없습니다.".to_string(),
+                                });
+                            }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
+                        }
+                        _ => {
+                            return Response::from_json(&ErrorResponse { error: "지원하지 않는 마트 종류입니다.".to_string() });
+                        }
+                    }
+                }
+            }
+            Response::error("Bad Request", 400)
         })
         .run(req, env)
         .await
