@@ -1,9 +1,11 @@
 use std::collections::LinkedList;
 
 use crate::{request::request_emart, response_type::SearchResponse};
+use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono_tz::Asia::Seoul;
 use regex::Regex;
 use request::{request_costco, request_homeplus};
-use response_type::ErrorResponse;
+use response_type::{ErrorResponse, InfoResponse, InfoStateKind};
 use serde_json::Value;
 use urlencoding::decode;
 use worker::*;
@@ -15,7 +17,7 @@ mod utils;
 fn log_request(req: &Request) {
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
-        Date::now().to_string(),
+        Utc::now().with_timezone(&Seoul),
         req.path(),
         req.cf().coordinates().unwrap_or_default(),
         req.cf().region().unwrap_or("unknown region".into())
@@ -43,7 +45,8 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                 if let Some(keyword) = ctx.param("keyword") {
                     match mart.as_str() {
                         "emart" => {
-                            let response_body = request_emart(2021, 10, keyword).await?;
+                            let now = Utc::now().with_timezone(&Seoul);
+                            let response_body = request_emart(now.year(), now.month(), keyword).await?;
 
                             let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
                             let mut result: LinkedList<String> = LinkedList::new();
@@ -75,19 +78,11 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                                 result.push_back(format!("{:?}", cap));
                             }                            
                             
-                            // for element in document.select(&Selector::parse("li.clearfix span.name a").unwrap()) {
-                            //     result.push_back(element.text().collect::<String>());
-                            // }
-                            
                             if result.is_empty() {
                                 return Response::from_json(&ErrorResponse {
                                     error: "검색 결과가 없습니다.".to_string(),
                                 });
                             }
-
-                            return Response::from_json(&SearchResponse {
-                                result
-                            });
                         }
                         "costco" => {
                             let response_body = request_costco(keyword).await?;
@@ -121,32 +116,82 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
             }
             Response::error("Bad Request", 400)
         })
-        .get_async("/info/:mart/:keyword", |_, ctx| async move {
+        .get_async("/info/:mart/:name", |_, ctx| async move {
             if let Some(mart) = ctx.param("mart") {
-                if let Some(keyword) = ctx.param("keyword") {
+                if let Some(name) = ctx.param("name") {
                     match mart.as_str() {
                         "emart" => {
-                            let response_body = request_emart(2021, 10, keyword).await?;
+                            let now = Utc::now().with_timezone(&Seoul);
+                            let response_body = request_emart(now.year(), now.month(), name).await?;
 
                             let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
-                            let mut result: LinkedList<String> = LinkedList::new();
+                            let json = &json["dataList"][0];
 
-                            for data in json["dataList"].as_array().unwrap() {
-                                result.push_back(data["NAME"].as_str().unwrap().to_string());
-                            }
-
-                            if result.is_empty() {
+                            if json["NAME"].as_str().unwrap() != decode(name).unwrap().into_owned() {
                                 return Response::from_json(&ErrorResponse {
                                     error: "검색 결과가 없습니다.".to_string(),
                                 });
                             }
 
-                            return Response::from_json(&SearchResponse {
-                                result
+                            let mut holidays: LinkedList<String> = LinkedList::new();
+
+                            if let Some(holiday1) = json["HOLIDAY_DAY1_YYYYMMDD"].as_str() {
+                                if !holiday1.is_empty() {
+                                    let datetime = DateTime::parse_from_str(&format!("{} 235959 +09:00", holiday1), "%Y%m%d %H%M%S %z").unwrap();
+                                    if now <= datetime {
+                                        holidays.push_back(holiday1.to_string());
+                                    }
+                                }
+                            }
+
+                            if let Some(holiday2) = json["HOLIDAY_DAY2_YYYYMMDD"].as_str() {
+                                if !holiday2.is_empty() {
+                                    let datetime = DateTime::parse_from_str(&format!("{} 235959 +09:00", holiday2), "%Y%m%d %H%M%S %z").unwrap();
+                                    if now <= datetime {
+                                        holidays.push_back(holiday2.to_string());
+                                    }
+                                }
+                            }
+
+                            if let Some(holiday3) = json["HOLIDAY_DAY3_YYYYMMDD"].as_str() {
+                                if !holiday3.is_empty() {
+                                    let datetime = DateTime::parse_from_str(&format!("{} 235959 +09:00", holiday3), "%Y%m%d %H%M%S %z").unwrap();
+                                    if now <= datetime {
+                                        holidays.push_back(holiday3.to_string());
+                                    }
+                                }
+                            }
+
+                            let start_time = json["OPEN_SHOPPING_TIME"].as_str().unwrap().to_string();
+                            let end_time = json["CLOSE_SHOPPING_TIME"].as_str().unwrap().to_string();
+
+                            let jijum_status = json["JIJUM_STATUS"].as_str().unwrap();
+
+                            let state: InfoStateKind = if jijum_status == "CLOSED" {
+                                if holidays.contains(&now.format("%Y%m%d").to_string()) {
+                                    InfoStateKind::HolidayClosed
+                                } else {
+                                    let start = Seoul.ymd(now.year(), now.month(), now.day()).and_hms(start_time[0..2].parse().unwrap(), start_time[3..5].parse().unwrap(), 0);
+                                    if now < start {
+                                        InfoStateKind::BeforeOpen
+                                    } else {
+                                        InfoStateKind::AfterClosed
+                                    }
+                                }
+                            } else {
+                                InfoStateKind::Open
+                            };
+
+                            return Response::from_json(&InfoResponse {
+                                name: json["NAME"].as_str().unwrap().to_string(),
+                                state,
+                                start_time,
+                                end_time,
+                                holidays
                             });
                         }
                         "homeplus" => {
-                            // let response_body = request_homeplus(keyword).await?;
+                            // let response_body = request_homeplus(name).await?;
 
                             let result: LinkedList<String> = LinkedList::new();
                             
@@ -161,14 +206,14 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                             });
                         }
                         "costco" => {
-                            let response_body = request_costco(keyword).await?;
+                            let response_body = request_costco(name).await?;
 
                             let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
                             let mut result: LinkedList<String> = LinkedList::new();
 
                             for data in json["data"].as_array().unwrap() {
                                 let display_name = data["displayName"].as_str().unwrap().to_string();
-                                if !display_name.contains(&decode(keyword).unwrap().into_owned()) {
+                                if !display_name.contains(&decode(name).unwrap().into_owned()) {
                                     continue;
                                 }
                                 result.push_back(data["displayName"].as_str().unwrap().to_string());

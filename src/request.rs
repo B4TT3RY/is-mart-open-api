@@ -8,7 +8,7 @@ const COSTCO_BASE_URL: &str = "https://www.costco.co.kr/store-finder/search?q=";
 
 const HOMEPLUS_VIEWSTATE: &str = r#"/wEPDwUJLTc2MDkzMDI3D2QWAmYPZBYCAgUPZBYCAgEPZBYCAgEPEGRkFgFmZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WAwUkY3RsMDAkQ29udGVudFBsYWNlSG9sZGVyMSRzdG9yZXR5cGUxBSRjdGwwMCRDb250ZW50UGxhY2VIb2xkZXIxJHN0b3JldHlwZTIFJGN0bDAwJENvbnRlbnRQbGFjZUhvbGRlcjEkc3RvcmV0eXBlM+aYO9PJofU5uQQJJZRZ2bboir3I"#;
 
-pub async fn request_emart(year: i32, month: i32, keyword: &str) -> Result<String, Error> {
+pub async fn request_emart(year: i32, month: u32, keyword: &str) -> Result<String, Error> {
     let mut headers = Headers::new();
     headers.set("User-Agent", USER_AGENT)?;
     headers.set("Content-Type", "application/x-www-form-urlencoded")?;
