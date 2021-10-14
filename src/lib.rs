@@ -1,8 +1,8 @@
 use std::collections::LinkedList;
 
 use crate::{request::request_emart, response_type::SearchResponse};
-use chrono::{DateTime, Datelike, NaiveTime, TimeZone, Timelike, Utc};
-use chrono_tz::Asia::Seoul;
+use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc, Weekday};
+use chrono_tz::{Asia::Seoul, Tz};
 use regex::Regex;
 use request::{request_costco, request_homeplus};
 use response_type::{ErrorResponse, InfoResponse, InfoStateKind};
@@ -234,7 +234,11 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                             let end_time = NaiveTime::parse_from_str(time[1], "%p %I:%M").unwrap();
                             let end_time = Seoul.ymd(now.year(), now.month(), now.day()).and_hms(end_time.hour(), end_time.minute(), end_time.second());
 
-                            let state = if now < start_time {
+                            let holidays = parse_costco_holiday(json["storeContent"].as_str().unwrap().to_string(), &now);
+
+                            let state = if holidays.contains(&now.format("%Y%m%d").to_string()) {
+                                InfoStateKind::HolidayClosed
+                            } else if now < start_time {
                                 InfoStateKind::BeforeOpen
                             } else if now > end_time {
                                 InfoStateKind::AfterClosed
@@ -247,7 +251,7 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                                 state,
                                 start_time: start_time.format("%H:%M").to_string(),
                                 end_time: end_time.format("%H:%M").to_string(),
-                                holidays: LinkedList::new(),
+                                holidays,
                             });
                         }
                         _ => {
@@ -260,4 +264,105 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
         })
         .run(req, env)
         .await
+}
+
+fn parse_costco_holiday(html: String, now: &DateTime<Tz>) -> LinkedList<String> {
+    let mut result: LinkedList<String> = LinkedList::new();
+    let regex = Regex::new("매월 ([첫둘셋넷])째, ([첫둘셋넷])째 ([월화수목금토일])요일").unwrap();
+    if let Some(caps) = regex.captures(&html) {
+        let first = match caps.get(1).map_or("", |m| m.as_str()) {
+            "첫" => 1,
+            "둘" => 2,
+            "셋" => 3,
+            "넷" => 4,
+            _ => 0
+        };
+        let second = match caps.get(2).map_or("", |m| m.as_str()) {
+            "첫" => 1,
+            "둘" => 2,
+            "셋" => 3,
+            "넷" => 4,
+            _ => 0
+        };
+        let weekday = match caps.get(3).map_or("", |m| m.as_str()) {
+            "월" => Weekday::Mon,
+            "화" => Weekday::Tue,
+            "수" => Weekday::Wed,
+            "목" => Weekday::Thu,
+            "금" => Weekday::Fri,
+            "토" => Weekday::Sat,
+            "일" => Weekday::Sun,
+            _ => Weekday::Mon
+        };
+
+        let first_holiday = NaiveDate::from_weekday_of_month(now.year(), now.month(), weekday, first);
+        let first_holiday = Seoul.ymd(first_holiday.year(), first_holiday.month(), first_holiday.day()).and_hms(23, 59, 59);
+        let second_holiday = NaiveDate::from_weekday_of_month(now.year(), now.month(), weekday, second);
+        let second_holiday = Seoul.ymd(second_holiday.year(), second_holiday.month(), second_holiday.day()).and_hms(23, 59, 59);
+
+        if now <= &first_holiday {
+            result.push_back(first_holiday.format("%Y%m%d").to_string());
+        }
+
+        if now <= &second_holiday {
+            result.push_back(second_holiday.format("%Y%m%d").to_string());
+        }
+
+        return result;
+    }
+    
+    let regex = Regex::new("매월 ([첫둘셋넷])째 ([월화수목금토일])요일, ([첫둘셋넷])째 ([월화수목금토일])요일").unwrap();
+    if let Some(caps) = regex.captures(&html) {
+        let first = match caps.get(1).map_or("", |m| m.as_str()) {
+            "첫" => 1,
+            "둘" => 2,
+            "셋" => 3,
+            "넷" => 4,
+            _ => 0
+        };
+        let second = match caps.get(3).map_or("", |m| m.as_str()) {
+            "첫" => 1,
+            "둘" => 2,
+            "셋" => 3,
+            "넷" => 4,
+            _ => 0
+        };
+        let first_weekday = match caps.get(2).map_or("", |m| m.as_str()) {
+            "월" => Weekday::Mon,
+            "화" => Weekday::Tue,
+            "수" => Weekday::Wed,
+            "목" => Weekday::Thu,
+            "금" => Weekday::Fri,
+            "토" => Weekday::Sat,
+            "일" => Weekday::Sun,
+            _ => Weekday::Mon
+        };
+        let second_weekday = match caps.get(4).map_or("", |m| m.as_str()) {
+            "월" => Weekday::Mon,
+            "화" => Weekday::Tue,
+            "수" => Weekday::Wed,
+            "목" => Weekday::Thu,
+            "금" => Weekday::Fri,
+            "토" => Weekday::Sat,
+            "일" => Weekday::Sun,
+            _ => Weekday::Mon
+        };
+
+        let first_holiday = NaiveDate::from_weekday_of_month(now.year(), now.month(), first_weekday, first);
+        let first_holiday = Seoul.ymd(first_holiday.year(), first_holiday.month(), first_holiday.day()).and_hms(23, 59, 59);
+        let second_holiday = NaiveDate::from_weekday_of_month(now.year(), now.month(), second_weekday, second);
+        let second_holiday = Seoul.ymd(second_holiday.year(), second_holiday.month(), second_holiday.day()).and_hms(23, 59, 59);
+
+        if now <= &first_holiday {
+            result.push_back(first_holiday.format("%Y%m%d").to_string());
+        }
+
+        if now <= &second_holiday {
+            result.push_back(second_holiday.format("%Y%m%d").to_string());
+        }
+        
+        return result;
+    }
+
+    result
 }
