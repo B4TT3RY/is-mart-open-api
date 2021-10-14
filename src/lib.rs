@@ -68,14 +68,12 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                         "homeplus" => {
                             let response_body = request_homeplus(keyword).await?;
 
-                            console_log!("{}", response_body);
-
                             let regex = Regex::new(r"<a href='(.*)'>([가-힣]+점)</a>").unwrap();
 
                             let mut result: LinkedList<String> = LinkedList::new();
 
                             for cap in regex.captures_iter(&response_body) {
-                                result.push_back(format!("{:?}", cap));
+                                result.push_back(format!("{}", cap.get(2).map_or("", |m| m.as_str())));
                             }                            
                             
                             if result.is_empty() {
@@ -83,6 +81,10 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                                     error: "검색 결과가 없습니다.".to_string(),
                                 });
                             }
+
+                            return Response::from_json(&SearchResponse {
+                                result
+                            });
                         }
                         "costco" => {
                             let response_body = request_costco(keyword).await?;
