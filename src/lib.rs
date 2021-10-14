@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 
 use crate::{request::request_emart, response_type::SearchResponse};
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, NaiveTime, TimeZone, Timelike, Utc};
 use chrono_tz::Asia::Seoul;
 use regex::Regex;
 use request::{request_costco, request_homeplus};
@@ -206,27 +206,48 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                             });
                         }
                         "costco" => {
+                            let now = Utc::now().with_timezone(&Seoul);
                             let response_body = request_costco(name).await?;
 
                             let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
-                            let mut result: LinkedList<String> = LinkedList::new();
+                            let json = &json["data"][0];
 
-                            for data in json["data"].as_array().unwrap() {
-                                let display_name = data["displayName"].as_str().unwrap().to_string();
-                                if !display_name.contains(&decode(name).unwrap().into_owned()) {
-                                    continue;
-                                }
-                                result.push_back(data["displayName"].as_str().unwrap().to_string());
-                            }
-
-                            if result.is_empty() {
+                            let display_name = json["displayName"].as_str().unwrap().to_string();
+                            if !display_name.contains(&decode(name).unwrap().into_owned()) {
                                 return Response::from_json(&ErrorResponse {
                                     error: "검색 결과가 없습니다.".to_string(),
                                 });
                             }
 
-                            return Response::from_json(&SearchResponse {
-                                result
+                            let days = vec!["월", "화", "수", "목", "금", "토", "일"];
+
+                            let time = &json["openings"][days[now.weekday() as usize]]["individual"];
+                            let time = time.as_str().unwrap().to_string();
+                            let time = time
+                                .replace("오전", "AM")
+                                .replace("오후", "PM");
+                            let time: Vec<&str> = time.split(" - ").collect();
+
+                            let start_time = NaiveTime::parse_from_str(time[0], "%p %I:%M").unwrap();
+                            let start_time = Seoul.ymd(now.year(), now.month(), now.day()).and_hms(start_time.hour(), start_time.minute(), start_time.second());
+                            
+                            let end_time = NaiveTime::parse_from_str(time[1], "%p %I:%M").unwrap();
+                            let end_time = Seoul.ymd(now.year(), now.month(), now.day()).and_hms(end_time.hour(), end_time.minute(), end_time.second());
+
+                            let state = if now < start_time {
+                                InfoStateKind::BeforeOpen
+                            } else if now > end_time {
+                                InfoStateKind::AfterClosed
+                            } else {
+                                InfoStateKind::Open
+                            };
+
+                            return Response::from_json(&InfoResponse {
+                                name: display_name,
+                                state,
+                                start_time: start_time.format("%H:%M").to_string(),
+                                end_time: end_time.format("%H:%M").to_string(),
+                                holidays: LinkedList::new(),
                             });
                         }
                         _ => {
