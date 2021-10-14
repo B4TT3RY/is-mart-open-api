@@ -68,12 +68,12 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                         "homeplus" => {
                             let response_body = request_homeplus(keyword).await?;
 
-                            let regex = Regex::new(r"<a href='(.*)'>([가-힣]+점)</a>").unwrap();
+                            let regex = Regex::new(r"<a href='.+'>([가-힣]+점)</a>").unwrap();
 
                             let mut result: LinkedList<String> = LinkedList::new();
 
                             for cap in regex.captures_iter(&response_body) {
-                                result.push_back(format!("{}", cap.get(2).map_or("", |m| m.as_str())));
+                                result.push_back(format!("{}", cap.get(1).map_or("", |m| m.as_str())));
                             }                            
                             
                             if result.is_empty() {
