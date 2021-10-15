@@ -16,7 +16,7 @@
 
 - URL Params
   
-  - `mart`: 마트 종류 (`emart`, `homeplus`, `costco`)
+  - `mart`: 마트 종류 (`emart`, `traders`, `homeplus`, `costco`)
   - `keyword`: 검색할 점포 이름
 
 - Success Response
@@ -49,7 +49,7 @@
 
 - URL Params
   
-  - `mart`: 마트 종류 (`emart`, `homeplus`, `costco`)
+  - `mart`: 마트 종류 (`emart`, `traders`, `homeplus`, `costco`)
   - `name`: 점포 이름
 
 - Success Response
