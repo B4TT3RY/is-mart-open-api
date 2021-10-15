@@ -44,9 +44,16 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
             if let Some(mart) = ctx.param("mart") {
                 if let Some(keyword) = ctx.param("keyword") {
                     match mart.as_str() {
-                        "emart" => {
+                        "emart" | "traders" => {
                             let now = Utc::now().with_timezone(&Seoul);
-                            let response_body = request_emart(now.year(), now.month(), keyword).await?;
+
+                            let search_type = match mart.as_str() {
+                                "emart" => "EM",
+                                "traders" => "TR",
+                                _ => ""
+                            };
+
+                            let response_body = request_emart(now.year(), now.month(), search_type, keyword).await?;
 
                             let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
                             let mut result: LinkedList<String> = LinkedList::new();
@@ -122,9 +129,16 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
             if let Some(mart) = ctx.param("mart") {
                 if let Some(name) = ctx.param("name") {
                     match mart.as_str() {
-                        "emart" => {
+                        "emart" | "traders" => {
                             let now = Utc::now().with_timezone(&Seoul);
-                            let response_body = request_emart(now.year(), now.month(), name).await?;
+
+                            let search_type = match mart.as_str() {
+                                "emart" => "EM",
+                                "traders" => "TR",
+                                _ => ""
+                            };
+
+                            let response_body = request_emart(now.year(), now.month(), search_type, name).await?;
 
                             let json: Value = serde_json::from_str(&response_body).unwrap_or_default();
                             let json = &json["dataList"][0];

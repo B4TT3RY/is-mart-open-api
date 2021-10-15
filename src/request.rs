@@ -9,7 +9,7 @@ const COSTCO_BASE_URL: &str = "https://www.costco.co.kr/store-finder/search?q=";
 
 const HOMEPLUS_VIEWSTATE: &str = "/wEPDwUJLTc2MDkzMDI3D2QWAmYPZBYCAgUPZBYCAgEPZBYCAgEPEGRkFgFmZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WAwUkY3RsMDAkQ29udGVudFBsYWNlSG9sZGVyMSRzdG9yZXR5cGUxBSRjdGwwMCRDb250ZW50UGxhY2VIb2xkZXIxJHN0b3JldHlwZTIFJGN0bDAwJENvbnRlbnRQbGFjZUhvbGRlcjEkc3RvcmV0eXBlM+aYO9PJofU5uQQJJZRZ2bboir3I";
 
-pub async fn request_emart(year: i32, month: u32, keyword: &str) -> Result<String, Error> {
+pub async fn request_emart(year: i32, month: u32, mart_type: &str, keyword: &str) -> Result<String, Error> {
     let mut headers = Headers::new();
     headers.set("User-Agent", USER_AGENT)?;
     headers.set("Content-Type", "application/x-www-form-urlencoded")?;
@@ -18,9 +18,10 @@ pub async fn request_emart(year: i32, month: u32, keyword: &str) -> Result<Strin
         .with_method(Method::Post)
         .with_headers(headers)
         .with_body(Some(JsValue::from_str(&format!(
-            "srchMode=jijum&year={}&month={}&jMode=true&strConfirmYN=N&keyword={}",
+            "srchMode=jijum&year={}&month={}&jMode=true&strConfirmYN=N&searchType={}&keyword={}",
             year,
             month,
+            mart_type,
             keyword
         ))));
 
