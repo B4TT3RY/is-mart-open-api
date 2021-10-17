@@ -2,12 +2,6 @@
 
 [API] 오늘 대형마트 영업하나요?
 
-## REST API [WIP]
-
-### :warning: 주의
-
-계속 업데이트 중인 문서입니다. 변동 사항이 있을 수 있습니다.
-
 ## Build
 
 `worker-build --release` 로 빌드 후
@@ -28,6 +22,12 @@ export default new WebAssembly.Instance(_wasm, importsObject).exports;
 ```
 
 다음과 같이 수정합니다.
+
+## REST API [WIP]
+
+### :warning: 주의
+
+계속 업데이트 중인 문서입니다. 변동 사항이 있을 수 있습니다.
 
 ### 마트 검색
 
