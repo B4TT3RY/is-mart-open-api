@@ -3,6 +3,7 @@ use std::collections::LinkedList;
 use crate::{request::request_emart, response_type::SearchResponse};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::{Asia::Seoul, Tz};
+use nipper::Document;
 use regex::Regex;
 use request::{request_costco, request_homeplus};
 use response_type::{ErrorResponse, InfoResponse, InfoStateKind};
@@ -75,13 +76,13 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                         "homeplus" => {
                             let response_body = request_homeplus(keyword).await?;
 
-                            let regex = Regex::new(r"<a href='.+'>([가-힣]+점)</a>").unwrap();
+                            let document = Document::from(&response_body);
 
                             let mut result: LinkedList<String> = LinkedList::new();
 
-                            for cap in regex.captures_iter(&response_body) {
-                                result.push_back(format!("{}", cap.get(1).map_or("", |m| m.as_str())));
-                            }                            
+                            document.select("ul.result_list > li.clearfix").iter().for_each(|element| {
+                                result.push_back(element.select("span.name > a").text().to_string());
+                            });                       
                             
                             if result.is_empty() {
                                 return Response::from_json(&ErrorResponse {
