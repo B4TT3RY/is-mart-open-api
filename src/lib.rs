@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 
 use crate::{request::request_emart, response_type::SearchResponse};
-use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc, Weekday};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::{Asia::Seoul, Tz};
 use nipper::Document;
 use regex::Regex;
@@ -208,18 +208,66 @@ pub async fn main(req: Request, env: Env) -> Result<Response> {
                             });
                         }
                         "homeplus" => {
-                            // let response_body = request_homeplus(name).await?;
+                            let now = Utc::now().with_timezone(&Seoul);
 
-                            let result: LinkedList<String> = LinkedList::new();
-                            
-                            if result.is_empty() {
-                                return Response::from_json(&ErrorResponse {
-                                    error: "검색 결과가 없습니다.".to_string(),
-                                });
+                            let response_body = request_homeplus(name).await?;
+
+                            let document = Document::from(&response_body);
+
+                            let mut result: Option<InfoResponse> = None;
+
+                            let mart = decode(name).unwrap().into_owned();
+
+                            document.select("ul.result_list > li.clearfix").iter().for_each(|element| {
+                                if element.select("span.name > a").text().to_string() == mart {
+                                    let time = element.select(".time > span:nth-child(1)").text().to_string();
+                                    let time: Vec<&str> = time.split("~").collect();
+
+                                    let start_time: Vec<u32> = time[0].split(":").map(|str| str.parse().unwrap()).collect();
+                                    let end_time: Vec<u32> = time[1].split(":").map(|str| str.parse().unwrap()).collect();
+                                    let start_time = Seoul.ymd(now.year(), now.month(), now.day()).and_hms(start_time[0], start_time[1], 0);
+                                    
+                                    let end_time = if end_time[0] <= 23 {
+                                        Seoul.ymd(now.year(), now.month(), now.day()).and_hms(end_time[0], end_time[1], 0)
+                                    } else {
+                                        let now = now.clone() + Duration::days(1);
+                                        now.with_hour(end_time[0] - 24).unwrap();
+                                        now.with_minute(end_time[1]).unwrap();
+                                        now
+                                    };
+
+                                    let mut holidays = LinkedList::new();
+                                    let holiday = element.select(".time > span.off").text().to_string().replace("-", "");
+                                    holidays.push_back(holiday);
+
+                                    let state = if holidays.contains(&now.format("%Y%m%d").to_string()) {
+                                        InfoStateKind::HolidayClosed
+                                    } else if now < start_time {
+                                        InfoStateKind::BeforeOpen
+                                    } else if now > end_time {
+                                        InfoStateKind::AfterClosed  
+                                    } else {
+                                        InfoStateKind::Open
+                                    };
+
+                                    result = Some(InfoResponse {
+                                        name: element.select("span.name > a").text().to_string(),
+                                        state,
+                                        start_time: time[0].to_string(),
+                                        end_time: time[1].to_string(),
+                                        holidays,
+                                    });
+
+                                    return;
+                                }
+                            });
+
+                            if let Some(info_response) = result {
+                                return Response::from_json(&info_response);
                             }
 
-                            return Response::from_json(&SearchResponse {
-                                result
+                            return Response::from_json(&ErrorResponse {
+                                error: "검색 결과가 없습니다.".to_string(),
                             });
                         }
                         "costco" => {
