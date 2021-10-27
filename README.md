@@ -2,27 +2,6 @@
 
 [API] 오늘 마트 영업하나요?
 
-## Build
-
-`worker-build --release` 로 빌드 후
-
-`~/build/worker/export_wasm.mjs` 파일을
-
-```diff
-import * as index_bg from "./index_bg.mjs";
-import _wasm from "./index_bg.wasm";
-
-const _wasm_memory = new WebAssembly.Memory({initial: 512});
-let importsObject = {
--   env: { memory: _wasm_memory },
-+   env: { now: Date.now, memory: _wasm_memory },
-    "./index_bg.js": index_bg
-};
-export default new WebAssembly.Instance(_wasm, importsObject).exports;
-```
-
-다음과 같이 수정합니다.
-
 ## REST API [WIP]
 
 ### :warning: 주의
