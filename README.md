@@ -1,10 +1,6 @@
 # is-mart-open-api
 
-[B4TT3RY/is-mart-open-api-elixir](https://github.com/B4TT3RY/is-mart-open-api-elixir)를 메인으로 개발중입니다.
-
-~~사실상 Deprecated~~
-
-[API] 오늘 대형마트 영업하나요?
+[API] 오늘 마트 영업하나요?
 
 ## Build
 
