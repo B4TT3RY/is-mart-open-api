@@ -1,4 +1,1 @@
 /target
-**/*.rs.bk
-wasm-pack.log
-build/
