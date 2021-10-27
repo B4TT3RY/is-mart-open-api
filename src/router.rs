@@ -20,6 +20,7 @@ pub async fn info(req: Request<()>) -> tide::Result<Body> {
         name: format!("{} {}", mart, name),
         start_time: "10:00:00".to_string(),
         end_time: "22:00:00".to_string(),
-        next_holiday: "2021/10/27".to_string()
+        next_holiday: "2021/10/27".to_string(),
+        distance: None
     })
 }
