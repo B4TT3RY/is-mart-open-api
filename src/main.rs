@@ -1,16 +1,20 @@
+use std::env;
+
 use async_std::task;
 use eyre::Result;
 
 mod router;
 
 fn main() -> Result<()> {
-    task::block_on(start())?;
+    let host = env::var("HOST").unwrap_or("0.0.0.0".to_string());
+    let port: u16 = env::var("PORT").unwrap_or("4000".to_string()).parse()?;
+    task::block_on(start(&host, port))?;
     Ok(())
 }
 
-async fn start() -> Result<()> {
+async fn start(host: &str, port: u16) -> Result<()> {
     let mut app = tide::new();
     app.at("/search/:mart/:keyword").get(router::search);
-    app.listen("0.0.0.0:4000").await?;
+    app.listen(format!("{}:{}", host, port)).await?;
     Ok(())
 }
