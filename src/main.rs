@@ -3,6 +3,7 @@ use std::env;
 use async_std::task;
 use eyre::Result;
 
+mod response_struct;
 mod router;
 
 fn main() -> Result<()> {
@@ -15,6 +16,7 @@ fn main() -> Result<()> {
 async fn start(host: &str, port: u16) -> Result<()> {
     let mut app = tide::new();
     app.at("/search/:mart/:keyword").get(router::search);
+    app.at("/info/:mart/:name").get(router::info);
     app.listen(format!("{}:{}", host, port)).await?;
     Ok(())
 }
